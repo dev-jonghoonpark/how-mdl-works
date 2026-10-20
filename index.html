@@ -155,6 +155,7 @@ select{font:inherit;font-size:13px;padding:5px 8px;border-radius:8px;border:1px 
 .wtab .h{color:var(--muted);font-size:11.5px}
 .wtab .r{text-align:right}
 .msg{font-size:13px;color:var(--muted);margin-top:8px}
+@media (max-width:640px){.tog{position:absolute}}
 </style>
 </head>
 <body>
@@ -351,7 +352,7 @@ $$\hat G(P_1, P_2, \ldots; Q) = -\log\sum_i \pi_i e^{-G_i} \qquad (17)$$<span cl
   <li><strong>가중치 감쇠</strong>: 보통의 가중치, 식 (4). 계수 λ는 슬라이더로 정합니다(논문 9절에서는 검증 집합으로 골랐습니다).</li>
   <li><strong>MDL 노이즈 가중치</strong>: 가중치마다 평균과 log 분산, 사전분포는 적응형 가우시안 혼합. 비용 = \(\frac{N}{2}\log\frac{1}{N}\sum_c\langle E^c\rangle\) (식 3, 12) + β · Σ Ĝ (식 17). 모든 파라미터(가중치 평균·분산, 혼합의 평균·분산·비율)를 함께 최적화합니다.</li>
 </ul>
-<p>설정은 논문 9절을 따랐습니다. 분산은 음수가 되거나 0으로 무너지지 않도록 log 분산을 최적화하고, 혼합 비율은 소프트맥스(식 26)로 둡니다. 혼합 성분의 평균은 일정 간격으로 놓고 이웃과 표준편차 2개만큼 떨어뜨려 초기화합니다. 가중치 비용의 계수 β는 0.05에서 시작해 0.05, 0.1, 0.15, 0.2, 0.3, …, 0.9, 1.0으로 올립니다. 다른 점은 논문이 켤레 기울기법을 썼고 여기서는 Adam을 쓴다는 것, 그리고 표 대신 구적식을 직접 계산한다는 것입니다. 기울기는 논문 8절처럼 파라미터를 조금씩 바꿔 비용 변화와 비교하는 방식으로 확인했습니다(상대 오차 10⁻⁸ 수준).</p>
+<p>설정은 논문 9절을 따랐습니다. 가중치 평균은 N(0, 0.15²)에서 뽑고 표준편차는 모두 0.1에서 시작합니다. 분산은 음수가 되거나 0으로 무너지지 않도록 log 분산을 최적화하고, 혼합 비율은 소프트맥스(식 26)로 둡니다. 사전분포는 가우시안 5개의 혼합이고, 평균을 −0.24에서 +0.24 사이에 고르게, 이웃과 표준편차 2개만큼 떨어뜨려 초기화합니다. 가중치 비용의 계수 β는 0.05, 0.1, 0.15, 0.2, 0.3, …, 0.9, 1.0으로 올립니다. 다른 점은 논문이 켤레 기울기법을 썼고 여기서는 Adam을 쓴다는 것, 표 대신 구적식을 직접 계산한다는 것, 그리고 입력이 128차원이 아니라 1차원이라는 것입니다. 기울기는 논문 8절처럼 파라미터를 조금씩 바꿔 비용 변화와 비교하는 방식으로 확인했습니다(상대 오차 10⁻⁸ 수준).</p>
 
 <div class="demo">
   <h4>데모 8 · 세 신경망을 동시에 학습시키기</h4>
@@ -361,21 +362,31 @@ $$\hat G(P_1, P_2, \ldots; Q) = -\log\sum_i \pi_i e^{-G_i} \qquad (17)$$<span cl
     <div class="ctrl"><label>은닉 유닛 H <b id="d8hv"></b></label><input type="range" id="d8h" min="2" max="16" step="1" value="8"></div>
     <div class="ctrl"><label>데이터 노이즈 표준편차 <b id="d8sv"></b></label><input type="range" id="d8s" min="0.05" max="0.5" step="0.01" value="0.2"></div>
     <div class="ctrl"><label>가중치 감쇠 λ <b id="d8lv"></b></label><input type="range" id="d8l" min="-3" max="1" step="0.01" value="-1.3"></div>
-    <div class="ctrl"><label>혼합 성분 수 <b id="d8kv"></b></label><input type="range" id="d8k" min="1" max="5" step="1" value="3"></div>
+    <div class="ctrl"><label>혼합 성분 수 <b id="d8kv"></b></label><input type="range" id="d8k" min="1" max="5" step="1" value="5"></div>
   </div>
-  <div class="btns"><button type="button" id="d8go">▶ 학습</button><button type="button" id="d8new">새 데이터</button><button type="button" id="d8anneal" aria-pressed="true">β 점진 증가 (논문)</button></div>
+  <div class="btns"><button type="button" id="d8go">▶ 학습</button><button type="button" id="d8new">새 데이터</button><button type="button" id="d8anneal" aria-pressed="true">β 점진 증가 (논문)</button><button type="button" id="d8init" aria-pressed="true">초기화: 논문 (작은 가중치)</button></div>
   <canvas id="d8a" height="250"></canvas>
   <div class="legend"><span><i style="background:var(--s2)"></i>벌점 없음</span><span><i style="background:var(--s4)"></i>가중치 감쇠</span><span><i style="background:var(--s1)"></i>MDL 노이즈 가중치</span><span><i style="background:var(--muted)"></i>참 함수</span></div>
-  <div class="split" style="margin-top:10px"><div><h5>시험 상대 오차 (로그)</h5><canvas id="d8b" height="170"></canvas></div><div><h5>MDL 가중치 평균과 혼합 사전분포</h5><canvas id="d8c" height="170"></canvas></div></div>
+  <div class="split" style="margin-top:10px"><div><h5>시험 상대 오차 (로그)</h5><canvas id="d8b" height="170"></canvas></div><div><h5>MDL 가중치 평균과 혼합 성분 (높이 = 비율 π)</h5><canvas id="d8c" height="170"></canvas></div></div>
   <div class="readout small" id="d8out"></div>
   <p class="msg" id="d8msg"></p>
 </div>
-<p>기본 설정(N = 30, H = 8, 가중치 25개)에서 벌점 없는 신경망은 3,000스텝쯤부터 훈련 점 사이에서 크게 휘어지며 점을 쫓아가고, 시험 상대 오차가 1.7까지 올라갑니다. 평균만 찍는 것보다 못합니다. “새 데이터”를 눌러 보면 0.06~0.14에서 끝나는 경우가 더 많고, 그럴 때는 MDL과 비슷하거나 MDL보다 나은 데이터도 있습니다. 과적합은 데이터에 따라 크게 터지기도 하고 조용히 지나가기도 합니다. MDL 신경망은 데이터를 바꿔도 대부분 0.05~0.1에 머물고, 학습이 끝나면 총 설명 길이가 “상수 하나만 보내는” 해보다 15~40비트 짧습니다. 이 데이터에는 신경망을 보낼 가치가 있다는 판정입니다. 몇 가지 더 해 볼 것들입니다.</p>
+<p>기본 설정(N = 30, H = 8, 가중치 25개)에서 벌점 없는 신경망은 훈련 점을 쫓아 휘어지며 시험 상대 오차 0.15 근처에서 끝납니다. MDL 신경망은 0.05 남짓으로 가중치 감쇠와 같은 수준이고, 총 설명 길이가 “상수 하나만 보내는” 해보다 30비트 넘게 짧습니다. 이 데이터에는 신경망을 보낼 가치가 있다는 판정입니다. 데이터 8가지(시드 8~15. 기본값이 9이고 “새 데이터”를 누를 때마다 10, 11, …로 넘어갑니다)로 같은 실험을 돌린 결과는 이렇습니다. 실행 환경에 따라 소수 셋째 자리는 조금 다를 수 있습니다.</p>
+<div class="tw"><table>
+  <thead><tr><th>설정 (N = 30, H = 8, 데이터 8가지, 같은 코드를 node로 실행)</th><th class="num">시험 상대 오차 중앙값</th><th class="num">최대</th><th>비고</th></tr></thead>
+  <tbody>
+  <tr><td>벌점 없음</td><td class="num">0.069</td><td class="num">0.149</td><td>펼친 초기화에서는 중앙값 0.092, 최대 1.68</td></tr>
+  <tr><td>가중치 감쇠 λ = 0.05</td><td class="num">0.051</td><td class="num">0.056</td><td>λ = 0.001이면 최대 0.11, λ = 10이면 ≈ 1.0</td></tr>
+  <tr><td>MDL, β 점진 증가</td><td class="num">0.056</td><td class="num">1.004</td><td>8가지 중 7가지 정상(0.045~0.059), 1가지 붕괴</td></tr>
+  <tr><td>MDL, β = 1 고정</td><td class="num">1.023</td><td class="num">1.096</td><td><strong>8가지 모두 붕괴</strong></td></tr>
+  </tbody>
+</table></div>
 <ul>
-  <li><strong>가중치 감쇠</strong>는 기본값 λ = 0.05에서 MDL보다 약간 낫습니다(데이터 8가지로 해 보면 0.046~0.056). 하지만 이 λ는 이 과제에 잘 맞는 값을 미리 골라 둔 것입니다. λ를 0.001로 내리면 과적합이 돌아오고(데이터에 따라 0.2 남짓까지), 10으로 올리면 평균만 찍는 평평한 선(≈ 1.0)이 됩니다. 논문 9절에서도 가중치 감쇠는 계수를 검증 집합으로 고르는 수고를 들여야 했습니다. MDL은 그 계수에 해당하는 것(혼합 사전분포의 분산)을 같은 비용 함수 안에서 데이터가 정합니다.</li>
-  <li><strong>N을 10 근처로</strong> 줄이면 MDL의 총 설명 길이가 상수 해보다 커지는 경우가 많습니다. MDL 기준으로는 이 데이터로 신경망을 정당화할 수 없다는 뜻이고, 9절의 “당혹스러운” 결과와 같은 이야기입니다.</li>
-  <li><strong>β 점진 증가를 끄면</strong> 처음부터 전체 가중치 비용을 물립니다. 논문은 이때 모든 가중치가 정보 없는 해로 빠르게 빠져 다시 나오지 못했다고 적었습니다. 이 작은 문제에서는 그런 붕괴는 일어나지 않았습니다. 대신 데이터 8가지 중 7가지에서 시험 오차가 나빠졌고(0.06~0.12), 그중 다수는 총 설명 길이가 오히려 <strong>더 짧았습니다</strong>. 설명 길이가 짧은 해가 늘 더 잘 일반화하지는 않는다는 것으로, 9절의 “당혹스러운” 결과와 같은 종류의 어긋남입니다.</li>
-  <li>학습이 끝난 뒤 가중치 히스토그램을 보면 가중치 평균이 서너 개의 좁은 봉우리로 모이고, 혼합 성분이 각 봉우리 위에 자리 잡습니다. 논문 그림 2·3에서 가중치가 “꽤 뚜렷한 세 덩어리”를 이루고 다섯 가우시안이 그에 맞춰 적응한 것과 같은 모습입니다. 같은 봉우리 안의 가중치는 사실상 하나의 값을 공유하므로 싸게 보내집니다.</li>
+  <li><strong>β 점진 증가를 끄면</strong> 논문 9절의 현상이 그대로 나옵니다. 처음부터 전체 가중치 비용을 물리면 정보가 거의 없는 가중치로 비용을 줄이기가 너무 쉬워서, 신경망은 출력 편향으로 평균만 맞추는 해에 빠지고 다시 나오지 못합니다. 데이터 8가지 모두 상대 오차 ≈ 1.0이었습니다. 논문의 붕괴 해는 “모든 가중치가 같은 음수”였고 여기서는 가중치가 0 근처로 모이는데, 둘 다 정보가 없다는 점은 같습니다. 다만 이 장난감 문제에서는 β를 천천히 올린 해의 총 설명 길이가 붕괴 해보다 15~40비트 <strong>더 짧았습니다</strong>. 붕괴는 최적화가 빠지는 함정이지 MDL의 답이 아니라는 뜻이고, 붕괴 해가 가장 짧았던 논문과는 다릅니다.</li>
+  <li><strong>초기화를 “펼친 가중치”로 바꾸면</strong>(은닉 유닛의 꺾이는 위치를 입력 구간에 미리 고르게 깔아 둠) β를 고정해도 붕괴하지 않습니다. 시작점이 이미 정보를 담고 있어서입니다. 대신 벌점 없는 신경망이 더 심하게 과적합합니다. 데이터에 따라 1.68까지 올라가 평균만 찍는 것보다 못해집니다. 이 초기화에서 MDL(β 점진 증가)은 데이터 8가지 모두 0.050~0.065로 벌점 없음보다 낫습니다.</li>
+  <li><strong>가중치 감쇠</strong>는 기본값 λ = 0.05에서 MDL과 같거나 약간 낫습니다. 하지만 이 λ는 이 과제에 잘 맞는 값을 미리 골라 둔 것이고, 10으로 올리면 평균만 찍는 평평한 선이 됩니다. 논문 9절에서도 가중치 감쇠는 계수를 검증 집합으로 고르는 수고를 들여야 했습니다. MDL은 그 계수에 해당하는 것(혼합 사전분포의 분산)을 같은 비용 함수 안에서 데이터가 정합니다.</li>
+  <li><strong>N을 10으로</strong> 줄이면(가중치 25개, 사례 10개) MDL은 β를 천천히 올려도 대부분 붕괴합니다(중앙값 1.04). 그동안 벌점 없는 신경망은 0.25 근처에서 과적합합니다. 사례 10개로는 미스핏을 줄인 만큼 가중치 비트를 갚지 못하니 상수 해가 낫다는 MDL의 판정이고, 9절의 “당혹스러운” 결과를 축소해 놓은 것입니다.</li>
+  <li>학습이 끝난 뒤 가중치 히스토그램을 보면 가중치 평균이 몇 개의 좁은 봉우리로 모입니다. 혼합 성분이 맡는 방식은 데이터마다 다릅니다. 기본 데이터에서는 좁은 성분 하나가 0 근처 봉우리에 붙어 그 가중치들을 거의 공짜로 만들고, 넓은 성분 하나가 나머지 흩어진 가중치를 맡으며, 쓰이지 않는 성분은 비율이 0 쪽으로 줄어듭니다. 데이터에 따라서는 성분이 봉우리마다 하나씩 자리 잡기도 합니다. 논문 그림 2·3에서는 가중치가 “꽤 뚜렷한 세 덩어리”를 이루고 다섯 가우시안이 그에 맞춰 적응했습니다.</li>
 </ul>
 
 <!-- ───────── 9 ───────── -->
@@ -405,7 +416,7 @@ $$\hat G(P_1, P_2, \ldots; Q) = -\log\sum_i \pi_i e^{-G_i} \qquad (17)$$<span cl
   <li><strong>Graves(2011)</strong>, “Practical Variational Inference for Neural Networks”는 이 논문을 MDL 관점 그대로 이어받아, 은닉층 하나라는 제약 없이 몬테카를로로 기대 오차의 기울기를 추정했습니다. 큰 순환 신경망에도 적용할 수 있게 된 것입니다.</li>
   <li><strong>Blundell 외(2015)</strong>의 <strong>Bayes by Backprop</strong>은 재매개변수화 \(w = \mu + \sigma\odot\varepsilon\)로 기울기를 편향 없이 추정합니다. 사전분포로 평균 0인 가우시안 두 개의 혼합(스케일 혼합)을 쓰는데, 7절의 혼합 사전분포와 닮았습니다. 혼합에 대한 KL은 해석적으로 풀리지 않으니 이것도 표본으로 추정합니다.</li>
   <li><strong>Kingma, Salimans &amp; Welling(2015)</strong>의 <strong>국소 재매개변수화</strong>는 가중치를 뽑는 대신 가중치 노이즈가 만드는 <strong>사전 활성값의 평균과 분산</strong>을 계산해 그 가우시안에서 뽑습니다. 6절에서 \(\mu_{x_h}, V_{x_h}\)를 계산한 것과 같은 단계입니다. 미니배치의 사례마다 노이즈가 독립이 되어 기울기 분산이 줄어듭니다(데모 10에서 손실값 추정으로 비교해 봅니다).</li>
-  <li>9절의 β 점진 증가는 VAE 학습에서 다시 나타납니다. Bowman 외(2016)의 KL 비용 어닐링, Sønderby 외(2016)의 warm-up이 KL 항의 계수를 0 근처에서 1로 올립니다. 논문이 겪은 “정보 없는 해”와 비슷하게, VAE에서도 KL 항이 너무 일찍 이기면 잠재 변수를 쓰지 않는 해에 빠지기 때문입니다.</li>
+  <li>9절의 β 점진 증가는 VAE 학습에서 다시 나타납니다. Bowman 외(2016)의 KL 비용 어닐링, Sønderby 외(2016)의 warm-up이 KL 항의 계수를 0 근처에서 1로 올립니다. 논문이 겪은 “정보 없는 해”와 비슷하게, VAE에서도 KL 항이 너무 일찍 이기면 잠재 변수를 쓰지 않는 해에 빠지기 때문입니다. 데모 8에서 β를 고정하면 이 붕괴를 직접 볼 수 있습니다.</li>
 </ul>
 
 <div class="demo">
@@ -417,7 +428,7 @@ $$\hat G(P_1, P_2, \ldots; Q) = -\log\sum_i \pi_i e^{-G_i} \qquad (17)$$<span cl
   <div class="legend"><span><i style="background:var(--s2)"></i>가중치 표집</span><span><i style="background:var(--s1)"></i>국소 재매개변수화</span><span><i style="background:var(--s3)"></i>정확한 값 (식 12)</span></div>
   <div class="readout" id="d10out"></div>
 </div>
-<p>두 추정 모두 평균은 정확한 값에 맞습니다(편향 없음). 흩어짐은 K를 4배로 늘릴 때마다 절반으로 줄어듭니다. 국소 재매개변수화는 사례마다 가중치를 따로 뽑는 것과 분포가 똑같아서 사례 사이의 상관이 사라집니다. Kingma 외(2015)는 이것으로 미니배치 기울기의 분산을 줄였는데, 그 효과는 사례 사이의 상관이 양수일 때 나옵니다. 이 예에서는 오히려 가중치를 공유한 쪽의 흩어짐이 절반 정도로 작습니다. 사례마다 오차의 부호가 달라서, 같은 가중치 표본이 만든 흔들림이 사례끼리 서로 상쇄되기 때문입니다. 표본을 어떻게 뽑느냐가 늘 같은 방향으로 좋아지지는 않습니다. 논문의 방식은 흩어짐이 0이지만 은닉층 하나, 선형 출력이라는 제약을 치렀고, 이후의 연구는 그 제약을 풀기 위해 표본으로 갔습니다.</p>
+<p>두 추정 모두 평균은 정확한 값에 맞습니다(편향 없음). 흩어짐은 K를 4배로 늘릴 때마다 절반으로 줄어듭니다. 국소 재매개변수화는 사례마다 가중치를 따로 뽑는 것과 분포가 똑같아서 사례 사이의 상관이 사라집니다. Kingma 외(2015)는 이것으로 미니배치 기울기의 분산을 줄였는데, 그 효과는 같은 가중치 표본이 만든 흔들림이 사례끼리 같은 방향으로 쌓일 때(상관이 양수일 때) 나옵니다. 이 작은 신경망에서는 두 방식의 흩어짐이 거의 같습니다. 사례 사이 상관이 크지 않다는 뜻이고, 신경망과 데이터에 따라 어느 쪽이 작은지는 달라집니다. 사례마다 오차의 부호가 섞여 있으면 공유한 가중치가 만든 흔들림이 서로 상쇄되기도 합니다. 논문의 방식은 흩어짐이 0이지만 은닉층 하나, 선형 출력이라는 제약을 치렀고, 이후의 연구는 그 제약을 풀기 위해 표본으로 갔습니다.</p>
 <p>압축과 일반화의 연결은 이후에도 이어졌습니다. PAC-Bayes 일반화 한계(McAllester, 1999)에도 같은 KL(q‖p) 항이 들어가고, Dziugaite &amp; Roy(2017)는 바로 이런 노이즈 가중치 사후분포를 최적화해서 실제 신경망에 의미 있는 일반화 한계를 계산했습니다. 같은 시리즈의 <a href="https://dev-jonghoonpark.github.io/how-normal-distribution-works/">How Normal Distribution Works</a>는 MSE와 가우시안 가정의 관계(2절)를, <a href="https://dev-jonghoonpark.github.io/how-backprop-works/">How Backprop Works</a>는 여기서 쓴 역전파를 다룹니다.</p>
 
 <!-- ───────── 11 ───────── -->
@@ -549,11 +560,12 @@ function softmax(a){var mx=Math.max.apply(null,a),e=a.map(function(x){return Mat
 /* ══════ 노이즈 가중치 신경망: 입력 1 → 로지스틱 은닉 H → 선형 출력 1 ══════
    파라미터 벡터 레이아웃: 가중치 nW = 3H+1개 (a: 입력→은닉, b: 은닉 편향, c: 은닉→출력, d: 출력 편향)
    p.mu[nW], p.lv[nW] (log 분산). */
-function netInit(H,r,sd,s0){
+function netInit(H,r,sd,s0,paper){
   var n=3*H+1,mu=[],lv=[];
   for(var i=0;i<n;i++){mu.push(gaussR(r)*sd);lv.push(Math.log(s0*s0));}
-  /* 은닉 유닛이 입력 구간 [−1,1] 안에 고루 꺾이도록 입력 가중치·편향을 펼쳐 둔다 */
-  for(var h=0;h<H;h++){mu[h]=(r()<0.5?-1:1)*(2+2*r());var k=-1+2*(h+0.5)/H;mu[H+h]=-mu[h]*k;}
+  /* paper: 논문 9절처럼 평균을 N(0, sd²)에서만 뽑는다.
+     아니면 은닉 유닛이 입력 구간 [−1,1] 안에 고루 꺾이도록 입력 가중치·편향을 펼쳐 둔다 */
+  if(!paper)for(var h=0;h<H;h++){mu[h]=(r()<0.5?-1:1)*(2+2*r());var k=-1+2*(h+0.5)/H;mu[H+h]=-mu[h]*k;}
   return {H:H,mu:mu,lv:lv};
 }
 function gaussR(r){var u=1-r(),v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
@@ -900,14 +912,15 @@ function drawD7(){
 ['#d7m','#d7s','#d7p','#d7w'].forEach(function(s){$(s).addEventListener('input',onFrame(drawD7));});
 
 /* ══════ 데모 8 · 학습 ══════ */
-var TOT8=12000,SPF8=80,seed8=8,E8=null,run8=false;
-function d8Opts(){return {N:+$('#d8n').value,H:+$('#d8h').value,ns:+$('#d8s').value,lam:Math.pow(10,+$('#d8l').value),K:+$('#d8k').value,anneal:$('#d8anneal').getAttribute('aria-pressed')==='true'};}
-function mixInit(K){var pr={m:[],lv:[],lg:[]},sp=K>1?1/(K-1):1;for(var k=0;k<K;k++){pr.m.push(K>1?-0.5+k*sp:0);pr.lv.push(2*Math.log(K>1?sp/2:0.5));pr.lg.push(0);}return pr;}
+var TOT8=12000,SPF8=80,seed8=9,E8=null,run8=false;
+function d8Opts(){return {N:+$('#d8n').value,H:+$('#d8h').value,ns:+$('#d8s').value,lam:Math.pow(10,+$('#d8l').value),K:+$('#d8k').value,anneal:$('#d8anneal').getAttribute('aria-pressed')==='true',paper:$('#d8init').getAttribute('aria-pressed')==='true'};}
+/* 논문 9절: 평균을 −0.24 ~ +0.24에 고르게, 이웃과 표준편차 2개만큼 떨어지게 */
+function mixInit(K){var pr={m:[],lv:[],lg:[]},sp=K>1?0.48/(K-1):0.48;for(var k=0;k<K;k++){pr.m.push(K>1?-0.24+k*sp:0);pr.lv.push(2*Math.log(sp/2));pr.lg.push(0);}return pr;}
 function d8Init(){
   var o=d8Opts(),D=genData(seed8,o.N,o.ns),Te=genData(seed8+1000,300,o.ns),mt=Te.T.reduce(function(a,b){return a+b;},0)/300,vt=0;
   Te.T.forEach(function(t){vt+=(t-mt)*(t-mt);});
   var mT=D.T.reduce(function(a,b){return a+b;},0)/o.N,vT=0;D.T.forEach(function(t){vT+=(t-mT)*(t-mT);});
-  var models=['plain','wd','mdl'].map(function(mode){var p=netInit(o.H,rng(seed8+7),0.3,0.1),n=p.mu.length;
+  var models=['plain','wd','mdl'].map(function(mode){var p=netInit(o.H,rng(seed8+7),o.paper?0.15:0.3,0.1,o.paper),n=p.mu.length;
     return {mode:mode,p:p,A:adamNew(n),B:adamNew(n),prior:mixInit(o.K),P:adamNew(3*o.K),hist:[],last:null};});
   E8={o:o,D:D,Te:Te,vt:vt,triv:0.5*o.N*Math.log(vT/o.N),step:0,models:models};
   models.forEach(function(M){d8Eval(M);});
@@ -953,8 +966,11 @@ function drawD8(){
   var mx=Math.max.apply(null,cnt);
   A=axes(c,W,H,{x0:lo,x1:hi,y0:0,y1:mx*1.15,xt:[Math.ceil(lo),0,Math.floor(hi)].filter(function(v,i,a){return a.indexOf(v)===i;}),yt:[],L:8,R:8});
   c.fillStyle=hexA(css('--s1'),0.6);for(var b=0;b<nb;b++)if(cnt[b])c.fillRect(A.X(lo+(b)*(hi-lo)/nb)+0.5,A.Y(cnt[b]),Math.max(1,A.X(lo+(hi-lo)/nb)-A.X(lo)-1),A.Y(0)-A.Y(cnt[b]));
-  var pr=M3.prior,pis=softmax(pr.lg),dens=[],dm=0;for(i=0;i<=400;i++){x=lo+(hi-lo)*i/400;var d=0;for(var k=0;k<pr.m.length;k++)d+=pis[k]*Math.exp(logN(x,pr.m[k],Math.exp(pr.lv[k])));dens.push([x,d]);if(d>dm)dm=d;}
-  line(c,dens.map(function(p){return [A.X(p[0]),A.Y(p[1]/dm*mx*1.1)];}),css('--s4'),2);
+  /* 성분마다 봉우리 하나, 높이 = 혼합 비율 π (밀도 그대로 그리면 가장 좁은 성분만 보인다) */
+  var pr=M3.prior,pis=softmax(pr.lg),pmax=Math.max.apply(null,pis);
+  for(var k=0;k<pr.m.length;k++){if(pis[k]<0.01)continue;var sk=Math.max(Math.exp(pr.lv[k]/2),(hi-lo)/300),cp=[];
+    for(i=0;i<=200;i++){x=pr.m[k]+sk*(-4+8*i/200);cp.push([A.X(x),A.Y(Math.exp(-0.5*Math.pow((x-pr.m[k])/sk,2))*pis[k]/pmax*mx*1.1)]);}
+    line(c,cp,css('--s4'),2);}
   /* 수치 */
   var o2='';E8.models.forEach(function(M){var nm={plain:'벌점 없음',wd:'가중치 감쇠',mdl:'MDL'}[M.mode];
     o2+='<span>'+nm+' · 훈련 MSE / 시험 상대 오차<b style="color:'+cols[M.mode]+'">'+fmt(M.last.train,3)+' / '+fmt(M.last.rel,3)+'</b></span>';});
@@ -963,21 +979,22 @@ function drawD8(){
   o2+='<span>스텝 · β<b>'+fmtInt(E8.step)+' · '+fmt(d8Beta(Math.min(E8.step,TOT8-1)),2)+'</b></span>';
   $('#d8out').innerHTML=o2;
   $('#d8msg').textContent=E8.step===0?'“▶ 학습”을 누르면 세 신경망이 같은 초기값에서 '+fmtInt(TOT8)+'스텝 학습합니다. 비트 값은 상수 kN을 뺀 값입니다.':
-    (E8.step>=TOT8?('학습 완료. MDL 총 설명 길이가 상수 해보다 '+(tot<E8.triv/LN2?fmt(E8.triv/LN2-tot,1)+'비트 짧습니다.':fmt(tot-E8.triv/LN2,1)+'비트 깁니다 — 이 데이터로는 신경망을 정당화하지 못합니다.')):'');
+    (E8.step>=TOT8?(L3.rel>0.9?'학습 완료. MDL 신경망이 정보 없는 해(평균만 찍는 출력)로 무너졌습니다. 총 설명 길이는 상수 해와 '+fmt(Math.abs(tot-E8.triv/LN2),1)+'비트 차이입니다.':('학습 완료. MDL 총 설명 길이가 상수 해보다 '+(tot<E8.triv/LN2?fmt(E8.triv/LN2-tot,1)+'비트 짧습니다.':fmt(tot-E8.triv/LN2,1)+'비트 깁니다 — 이 데이터로는 신경망을 정당화하지 못합니다.'))):'');
 }
 $('#d8go').addEventListener('click',function(){if(run8){run8=false;$('#d8go').textContent='▶ 계속';return;}if(!E8||E8.step>=TOT8)d8Init();run8=true;$('#d8go').textContent='■ 멈춤';requestAnimationFrame(d8Tick);});
 $('#d8new').addEventListener('click',function(){seed8++;d8Reset();});
 $('#d8anneal').addEventListener('click',function(){var on=this.getAttribute('aria-pressed')==='true';this.setAttribute('aria-pressed',!on);this.textContent=on?'β = 1 고정':'β 점진 증가 (논문)';d8Reset();});
+$('#d8init').addEventListener('click',function(){var on=this.getAttribute('aria-pressed')==='true';this.setAttribute('aria-pressed',!on);this.textContent=on?'초기화: 펼친 가중치':'초기화: 논문 (작은 가중치)';d8Reset();});
 ['#d8n','#d8h','#d8s','#d8l','#d8k'].forEach(function(s){$(s).addEventListener('input',onFrame(d8Reset));});
 
 /* ══════ 데모 10 · 정확한 값 vs 표본 ══════ */
 var R10=null,rr10=rng(1010);
 function d10Net(){if(E8&&E8.step>=TOT8*0.5)return E8.models[2].p;
   /* 아직 학습하지 않았다면 기본 설정으로 MDL 신경망만 학습한다 */
-  if(!d10Net.cache){var D=genData(8,30,0.2),p=netInit(8,rng(15),0.3,0.1),pr=mixInit(3),A=adamNew(25),B=adamNew(25),P=adamNew(9);
+  if(!d10Net.cache){var D=genData(9,30,0.2),p=netInit(8,rng(16),0.15,0.1,true),pr=mixInit(5),A=adamNew(25),B=adamNew(25),P=adamNew(15);
     var sch=[.05,.1,.15,.2,.3,.4,.5,.6,.7,.8,.9,1];
     for(var s=0;s<TOT8;s++){var R=netCost(p,D.X,D.T,'mdl',pr,sch[Math.min(11,Math.floor(s/(TOT8/20)))]);adamStep(A,p.mu,R.gmu,0.02);adamStep(B,p.lv,R.glv,0.02,-20,4);
-      var pv=pr.m.concat(pr.lv,pr.lg),pg=R.gp.m.concat(R.gp.lv,R.gp.lg);adamStep(P,pv,pg,0.02);pr.m=pv.slice(0,3);pr.lv=pv.slice(3,6).map(function(v){return Math.max(v,-14);});pr.lg=pv.slice(6);}
+      var pv=pr.m.concat(pr.lv,pr.lg),pg=R.gp.m.concat(R.gp.lv,R.gp.lg);adamStep(P,pv,pg,0.02);pr.m=pv.slice(0,5);pr.lv=pv.slice(5,10).map(function(v){return Math.max(v,-14);});pr.lg=pv.slice(10);}
     d10Net.cache={p:p,D:D};}
   return d10Net.cache.p;}
 function d10Data(){return (E8&&E8.step>=TOT8*0.5)?E8.D:d10Net.cache.D;}
